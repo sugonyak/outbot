@@ -1,11 +1,13 @@
 from outline_vpn.outline_vpn import OutlineVPN
 
+import prettytable as pt
 import logging, json
-from telegram import Update, BotCommandScopeChat, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Update, BotCommandScopeChat, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, filters
 from dotenv import load_dotenv
 import os
+from prettytable import SINGLE_BORDER
 
 load_dotenv()
 
@@ -85,80 +87,94 @@ def get_key_by_name(keys_object, key_name):
         raise Exception(f"No key with name {key_name}")
 
 
+def get_key_by_id(keys_object, key_id):
+    for key in keys_object:
+        if key.key_id == key_id:
+            return key
+    else:
+        raise Exception(f"No key with id {key_id}")
+
+def log_event(update: Update, command="", server="", key_id="", key_name=""):
+    logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}')
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info(f'Recieved start command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}')
     await context.application.bot.delete_my_commands(scope=BotCommandScopeChat(update.effective_user.id))
     await context.application.bot.set_my_commands(commands=commands,scope=BotCommandScopeChat(update.effective_user.id))
-    await update.message.reply_text(text=f'Hi admin! Check your commands, available servers:\n{'\n'.join(servers)}')
+    log_event(update, command="start")
+    await update.message.reply_text(text=f'Hi admin! Check your commands, available servers:\n{'\n'.join(servers)}', reply_markup=ReplyKeyboardRemove())
+
 
 async def list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info(f"Got list_keys command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}")
-    # list_keys nl
     try:
         server = parse_list_keys(update.message.text)
         client = init_server(server)
         keys_string = f"server: {server}\n"
+
+        table = pt.PrettyTable(['ID', 'Name', 'Used', 'Limit'])
+        table.align = 'l'
+        table.set_style(SINGLE_BORDER)
+
         keys = client.get_keys()
         for key in keys:
-            keys_string += f"{bytes_to_gb(key.used_bytes):>5.1f}/{bytes_to_gb(key.data_limit):<5.1f} {key.key_id:<3}:{key.name:<20}\n" 
-        await update.message.reply_text(f'<code>{keys_string}</code>', parse_mode=ParseMode.HTML)
+            table.add_row([f'{key.key_id}', f'{key.name}'[:12], f'{bytes_to_gb(key.used_bytes):>.1f}', f'{bytes_to_gb(key.data_limit):>.1f}'])
+
+        log_event(update, command="list_keys", server=server)
+        await update.message.reply_text(f'server: {server}\n<code>{table.get_string(sortby="Name")}</code>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
+
 async def add_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info(f"Got add_key command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}")
-    # add_key nl "Key"
     try:
         server, key_name = parse_key_action(update.message.text)
         client = init_server(server)
         key = client.create_key(name=key_name)
-        await update.message.reply_text(f'Key {key_name} created, access url:\n<code>{key.access_url}</code>', parse_mode=ParseMode.HTML)
+        log_event(update, command="add_key", server=server, key_name=key.name, key_id=key.key_id)
+        await update.message.reply_text(f'Key {key.name} created with id {key.key_id}, access url:\n<span class="tg-spoiler">{key.access_url}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
+
 async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info(f"Got delete_key command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}")
-    # delete_key nl "Key"
     try:
         server, key_id = parse_key_action(update.message.text)
         client = init_server(server)
-        keys = client.get_keys()
-        # key = get_key_by_name(keys, key_name)
         client.delete_key(key_id)
+        log_event(update, command="delete_key", server=server, key_id=key_id)
         await update.message.reply_text(f'Server {server}, deleted key {key_id}')
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
+
 async def get_access_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.info(f"Got delete_key command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}")
-    # get_access_url nl "Key"
     try:
         server, key_id = parse_key_action(update.message.text)
         client = init_server(server)
         keys = client.get_keys()
-        # key = get_key_by_name(keys, key_name)
-        await update.message.reply_text(f'Server {server}, key {key_id} access url:\n<code>{key.access_url}</code>', parse_mode=ParseMode.HTML)
+        key = get_key_by_id(keys, key_id)
+        log_event(update, command="get_access_url", server=server, key_name=key.name, key_id=key.key_id)
+        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{key.access_url}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
+
 async def set_data_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    # set_data_limit nl "Key" 20
-    logger.info(f"Got set_data_limit command from {update.effective_user.first_name} {update.effective_user.last_name}, username {update.effective_user.username}")
     try:
         server, key_id, data_limit = parse_set_data_limit(update.message.text)
         client = init_server(server)
-        keys = client.get_keys()
-        # key = get_key_by_name(keys, key_name)
         logger.info(f'Set data limit {data_limit}GB to key {key_id}')
         client.add_data_limit(key_id, gb_to_bytes(data_limit))
+        log_event(update, command="set_data_limit", server=server, key_id=key.key_id)
         await update.message.reply_text(f'Server {server}, set data limit {data_limit}GB to key {key_id}')
     except Exception as e:
         await update.message.reply_text(f'{e}')
+
 
 async def not_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     logger.warning(f'Got a start attempt from non-admin user {update.effective_user.first_name} {update.effective_user.last_name}, username: {update.effective_user.username}')
     await context.application.bot.delete_my_commands(scope=BotCommandScopeChat(update.effective_user.id))
     await update.message.reply_text('You\'re not an admin user, sorry')
+
 
 def main() -> None:
 
