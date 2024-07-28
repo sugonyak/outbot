@@ -164,7 +164,7 @@ async def set_data_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         client = init_server(server)
         logger.info(f'Set data limit {data_limit}GB to key {key_id}')
         client.add_data_limit(key_id, gb_to_bytes(data_limit))
-        log_event(update, command="set_data_limit", server=server, key_id=key.key_id)
+        log_event(update, command="set_data_limit", server=server, key_id=key_id)
         await update.message.reply_text(f'Server {server}, set data limit {data_limit}GB to key {key_id}')
     except Exception as e:
         await update.message.reply_text(f'{e}')
