@@ -1,7 +1,7 @@
 from outline_vpn.outline_vpn import OutlineVPN
 
 import prettytable as pt
-import logging, json
+import logging, json, re
 from telegram import Update, BotCommandScopeChat, InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardRemove
 from telegram.constants import ParseMode
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes, filters
@@ -37,6 +37,7 @@ commands = [
     ('add_key', 'Add new key, args: server_name, key_name'),
     ('delete_key', 'Delete key, args: server_name, key_name'),
     ('get_access_url', 'Get access url for key, args: server_name, key_name'),
+    ('get_access_url_override', 'Get access url with override for key, args: server_name, key_name'),
     ('set_data_limit', 'Sets data limit for key, args: server_name, key_name, data_limit in GB')
 ]
 
@@ -94,6 +95,15 @@ def get_key_by_id(keys_object, key_id):
     else:
         raise Exception(f"No key with id {key_id}")
 
+def parse_access_url(url):
+    access_url_regex = 'ss://.*@(?P<ip>[\\d\\.]+):(?P<port>[\\d]+)/.*'
+    regex = re.compile(access_url_regex)
+    match = re.match(regex, url)
+    if match:
+        return match.group('ip'), match.group('port')
+    else:
+        raise Exception('Cannot parse access url')
+
 def log_event(update: Update, command="", server="", key_id="", key_name=""):
     logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}')
 
@@ -112,6 +122,7 @@ async def list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
         table = pt.PrettyTable(['ID', 'Name', 'Used', 'Limit'])
         table.align = 'l'
+        table.align['Used'] = 'r'
         table.set_style(SINGLE_BORDER)
 
         keys = client.get_keys()
@@ -152,8 +163,24 @@ async def get_access_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         client = init_server(server)
         keys = client.get_keys()
         key = get_key_by_id(keys, key_id)
+        access_url = key.access_url
         log_event(update, command="get_access_url", server=server, key_name=key.name, key_id=key.key_id)
-        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{key.access_url}</span>', parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{access_url}</span>', parse_mode=ParseMode.HTML)
+    except Exception as e:
+        await update.message.reply_text(f'{e}')
+
+async def get_access_url_override(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    try:
+        server, key_id = parse_key_action(update.message.text)
+        client = init_server(server)
+        keys = client.get_keys()
+        key = get_key_by_id(keys, key_id)
+        if 'access_url_override' not in servers[server]:
+            raise Exception(f'No override for server {server}')
+        ip, port = parse_access_url(key.access_url)
+        access_url = key.access_url.replace(f'{ip}:{port}', servers[server]['access_url_override'])
+        log_event(update, command="get_access_url_override", server=server, key_name=key.name, key_id=key.key_id)
+        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{access_url}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
@@ -188,6 +215,7 @@ def main() -> None:
     app.add_handler(CommandHandler(command="add_key", callback=add_key, filters=filters.Chat(chat_id=admin_users)))
     app.add_handler(CommandHandler(command="delete_key", callback=delete_key, filters=filters.Chat(chat_id=admin_users)))
     app.add_handler(CommandHandler(command="get_access_url", callback=get_access_url, filters=filters.Chat(chat_id=admin_users)))
+    app.add_handler(CommandHandler(command="get_access_url_override", callback=get_access_url_override, filters=filters.Chat(chat_id=admin_users)))
     app.add_handler(CommandHandler(command="set_data_limit", callback=set_data_limit, filters=filters.Chat(chat_id=admin_users)))
     logger.info('Starting polling')
 
