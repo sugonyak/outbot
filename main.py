@@ -104,6 +104,10 @@ def parse_access_url(url):
     else:
         raise Exception('Cannot parse access url')
 
+def generate_prefix_and_server_name(server):
+    prefix = '%16%03%01%00%C2%A8%01%01'
+    return f"&prefix={prefix}#{server}"
+
 def log_event(update: Update, command="", server="", key_id="", key_name=""):
     logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}')
 
@@ -141,7 +145,9 @@ async def add_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         client = init_server(server)
         key = client.create_key(name=key_name)
         log_event(update, command="add_key", server=server, key_name=key.name, key_id=key.key_id)
-        await update.message.reply_text(f'Key {key.name} created with id {key.key_id}, access url:\n<span class="tg-spoiler">{key.access_url}</span>', parse_mode=ParseMode.HTML)
+
+        await update.message.reply_text(f'Key {key.name} created with id {key.key_id}, access url:', parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f'\n<span class="tg-spoiler">{key.access_url}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
@@ -152,6 +158,7 @@ async def delete_key(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None
         client = init_server(server)
         client.delete_key(key_id)
         log_event(update, command="delete_key", server=server, key_id=key_id)
+
         await update.message.reply_text(f'Server {server}, deleted key {key_id}')
     except Exception as e:
         await update.message.reply_text(f'{e}')
@@ -165,9 +172,12 @@ async def get_access_url(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
         key = get_key_by_id(keys, key_id)
         access_url = key.access_url
         log_event(update, command="get_access_url", server=server, key_name=key.name, key_id=key.key_id)
-        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{access_url}</span>', parse_mode=ParseMode.HTML)
+
+        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:', parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f'<span class="tg-spoiler">{access_url}{generate_prefix_and_server_name(server)}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
+
 
 async def get_access_url_override(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
@@ -180,7 +190,9 @@ async def get_access_url_override(update: Update, context: ContextTypes.DEFAULT_
         ip, port = parse_access_url(key.access_url)
         access_url = key.access_url.replace(f'{ip}:{port}', servers[server]['access_url_override'])
         log_event(update, command="get_access_url_override", server=server, key_name=key.name, key_id=key.key_id)
-        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:\n<span class="tg-spoiler">{access_url}</span>', parse_mode=ParseMode.HTML)
+
+        await update.message.reply_text(f'Server {server}, key name {key.name}\naccess url:', parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f'<span class="tg-spoiler">{access_url}{generate_prefix_and_server_name(servers[server]['access_url_override_name'])}</span>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
