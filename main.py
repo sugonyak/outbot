@@ -59,6 +59,11 @@ def gb_to_bytes(gb_value: int):
     else:
         return 0
 
+def get_total_data_for_server(server):
+    data_array = server.get_transferred_data()
+    total_data = sum(data_array['bytesTransferredByUserId'].values())
+    return total_data
+
 def parse_list_keys(command_string):
     # /command server key_name
     split = command_string.split(" ")
@@ -122,7 +127,9 @@ async def list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     try:
         server = parse_list_keys(update.message.text)
         client = init_server(server)
-        keys_string = f"server: {server}\n"
+        total_data = get_total_data_for_server(client)
+        global_data_limit = client.get_server_information()['accessKeyDataLimit']['bytes']
+        keys_string = f"server: {server}\ntotal data: {bytes_to_gb(total_data):>.2f} GB\ndata limit: {bytes_to_gb(global_data_limit):>.2f} GB\n"
 
         table = pt.PrettyTable(['ID', 'Name', 'Used', 'Limit'])
         table.align = 'l'
@@ -134,7 +141,7 @@ async def list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
             table.add_row([f'{key.key_id}', f'{key.name}'[:12], f'{bytes_to_gb(key.used_bytes):>.1f}', f'{bytes_to_gb(key.data_limit):>.1f}'])
 
         log_event(update, command="list_keys", server=server)
-        await update.message.reply_text(f'server: {server}\n<code>{table.get_string(sortby="Name")}</code>', parse_mode=ParseMode.HTML)
+        await update.message.reply_text(f'{keys_string}<code>{table.get_string(sortby="Name")}</code>', parse_mode=ParseMode.HTML)
     except Exception as e:
         await update.message.reply_text(f'{e}')
 
