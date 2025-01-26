@@ -4,6 +4,7 @@ Small Python script for easy multi-server Outline management through Telegram
 ## Prerequisites
 - [Telegram bot token](https://core.telegram.org/bots/tutorial#obtain-your-bot-token)
 - [Outline server](https://support.getoutline.org/s/article/Outline-server-setup?language=en_US) and credentials from `/opt/outline/access.txt`
+- Telegram admin user id - you either already know it or you can run Outbot with empty "admin_users", it will return your user ID on "/start" command
 
 ## Configuration
 Example config:
@@ -11,8 +12,8 @@ Example config:
 {
     "admin_users":
     [
-        TG_ADMIN_USER_ID,
-        TG_ADMIN_USER_ID2
+        TG_ADMIN_USER_ID_LIKE_1111, 
+        TG_ADMIN_USER_ID2_LIKE_1111
     ],
     "bot_token": "TG_BOT_TOKEN",
     "servers":

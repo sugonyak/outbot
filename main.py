@@ -16,12 +16,11 @@ logging.basicConfig(
     level=logging.INFO
 )
 logging.getLogger("httpx").setLevel(logging.WARNING)
-logger = logging.getLogger(__name__)
 
+logger = logging.getLogger(__name__)
 config_path = os.getenv("APP_CONFIG_PATH", '.appconfig.json')
 
 logger.info(f'Loading config from {config_path}')
-
 f = open(config_path)
 config = json.load(f)
 
@@ -114,7 +113,7 @@ def generate_prefix_and_server_name(server):
     return f"&prefix={prefix}#{server}"
 
 def log_event(update: Update, command="", server="", key_id="", key_name=""):
-    logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}')
+    logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}, userId={update.effective_user.id}')
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.application.bot.delete_my_commands(scope=BotCommandScopeChat(update.effective_user.id))
@@ -208,7 +207,6 @@ async def set_data_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
     try:
         server, key_id, data_limit = parse_set_data_limit(update.message.text)
         client = init_server(server)
-        logger.info(f'Set data limit {data_limit}GB to key {key_id}')
         client.add_data_limit(key_id, gb_to_bytes(data_limit))
         log_event(update, command="set_data_limit", server=server, key_id=key_id)
         await update.message.reply_text(f'Server {server}, set data limit {data_limit}GB to key {key_id}')
@@ -217,9 +215,9 @@ async def set_data_limit(update: Update, context: ContextTypes.DEFAULT_TYPE) -> 
 
 
 async def not_admin(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    logger.warning(f'Got a start attempt from non-admin user {update.effective_user.first_name} {update.effective_user.last_name}, username: {update.effective_user.username}')
+    log_event(update, command="start_non_admin")
     await context.application.bot.delete_my_commands(scope=BotCommandScopeChat(update.effective_user.id))
-    await update.message.reply_text('You\'re not an admin user, sorry')
+    await update.message.reply_text(f'You\'re not an admin user, sorry. Your user ID is {update.effective_user.id}')
 
 
 def main() -> None:
