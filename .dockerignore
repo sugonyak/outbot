@@ -1,2 +1,4 @@
 .env
 .appconfig.json
+.git
+venv/

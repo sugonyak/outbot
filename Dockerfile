@@ -9,6 +9,6 @@ USER nonroot
 COPY --chown=nonroot:nonroot  ./requirements.txt ./requirements.txt
 RUN pip3 install -r requirements.txt
 
-COPY --chown=nonroot:nonroot . .
+COPY --chown=nonroot:nonroot ./main.py ./main.py
 
 CMD ["python3", "main.py"]
