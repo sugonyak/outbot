@@ -1,0 +1,8 @@
+services:
+  outbot:
+    image: sugonyak/outbot:latest
+    environment:
+      APP_CONFIG_PATH: /opt/config.json
+    volumes:
+      - '/opt/outbot-config.json:/opt/config.json' 
+    restart: unless-stopped
