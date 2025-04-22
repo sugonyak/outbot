@@ -113,7 +113,7 @@ def generate_prefix_and_server_name(server):
     return f"&prefix={prefix}#{server}"
 
 def log_event(update: Update, command="", server="", key_id="", key_name=""):
-    logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join((update.effective_user.first_name, update.effective_user.last_name))}, username={update.effective_user.username}, userId={update.effective_user.id}')
+    logger.info(f'Received {command=} {server=} {key_id=} {key_name=} user={" ".join(filter(None, (update.effective_user.first_name, update.effective_user.last_name)))}, username={update.effective_user.username}, userId={update.effective_user.id}')
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await context.application.bot.delete_my_commands(scope=BotCommandScopeChat(update.effective_user.id))
