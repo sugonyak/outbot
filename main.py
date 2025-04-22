@@ -34,10 +34,10 @@ commands = [
     ('start', 'Start bot, list servers and refresh commands'),
     ('list_keys', 'List keys on server, args: server_name'),
     ('add_key', 'Add new key, args: server_name, key_name'),
-    ('delete_key', 'Delete key, args: server_name, key_name'),
-    ('get_access_url', 'Get access url for key, args: server_name, key_name'),
-    ('get_access_url_override', 'Get access url with override for key, args: server_name, key_name'),
-    ('set_data_limit', 'Sets data limit for key, args: server_name, key_name, data_limit in GB')
+    ('delete_key', 'Delete key, args: server_name, key_id'),
+    ('get_access_url', 'Get access url for key, args: server_name, key_id'),
+    ('get_access_url_override', 'Get access url with override for key, args: server_name, key_id'),
+    ('set_data_limit', 'Sets data limit for key, args: server_name, key_id, data_limit in GB')
 ]
 
 def init_server(name):
