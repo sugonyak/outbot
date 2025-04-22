@@ -127,7 +127,9 @@ async def list_keys(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
         server = parse_list_keys(update.message.text)
         client = init_server(server)
         total_data = get_total_data_for_server(client)
-        global_data_limit = client.get_server_information()['accessKeyDataLimit']['bytes']
+        server_info = client.get_server_information()
+
+        global_data_limit = server_info['accessKeyDataLimit']['bytes'] if 'accessKeyDataLimit' in server_info else 0
         keys_string = f"server: {server}\ntotal data: {bytes_to_gb(total_data):>.2f} GB\ndata limit: {bytes_to_gb(global_data_limit):>.2f} GB\n"
 
         table = pt.PrettyTable(['ID', 'Name', 'Used', 'Limit'])
